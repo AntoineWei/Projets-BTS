@@ -1,0 +1,6 @@
+mettre l'interface en dhcp grace a cette commande :
+
+sudo nano /etc/network/interfaces
+
+mettre tous ce qu'il est en static en commentaire et décommater le dhcp
+
