@@ -8,7 +8,9 @@ GPIO.setmode(GPIO.BCM)
 def read_capteur():
     #Simule la lecture du capteur
     temp = 20 + random.uniform(-2, 5)   #18-25°C
-    return "TEMP:%.1fC" % temp
+    #Simule le courant 
+    courant = 1.2 + random.uniform(-0.7, 0.8)   #0.5-2.0A
+    return "TEMP:%.1fC COURANT:%2fA"% (temp, courant)
 
 #Serveur TCP
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -24,8 +26,8 @@ while True:
         data = client.recv(1024).decode('utf-8')
     
         if data == "READ":
-            valeur = read
-            response = "temp:25.3C humid:60%".encode('utf-8')
+            valeur = read_capteur
+            response = valeur.encode('utf-8')
         else:
             response = "Commande inconnue".encode('utf-8')  # Sans accent !
     
