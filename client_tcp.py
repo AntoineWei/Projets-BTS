@@ -1,7 +1,7 @@
 import socket
 import requests
 #configuration
-TCP_IP = '' #IP Rasberry
+TCP_IP = '127.0.0.1' #IP Rasberry
 TCP_PORT = 12345
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  #Creéer le socket client
@@ -18,7 +18,7 @@ temp = valeurs.get('temp', '0')
 courant = valeurs.get('courant', '0')
 
 # Envoi vers PHP 
-php_url = 'http://.../enregistrer.php'  # ou IP distante
+php_url = 'http://projet.euroclimat.chez.com/enregistrer.php'  # ou IP distante
 payload = {'temperature': temp, 'courant': courant}
 response = requests.post(php_url, data=payload, timeout=5)
 
