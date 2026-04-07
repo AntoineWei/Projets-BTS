@@ -3,7 +3,7 @@ echo "Arrêt des services..."
 sudo killall hostapd udhcpd 2>/dev/null
 
 echo "Configuration de l'IP du Pi..."
-sudo ifconfig wlan0 192.168.4.1 netmask 255.255.255.0 up
+sudo ifconfig wlan0 192.168.10.1 netmask 255.255.255.0 up
 
 echo "Lancement du DHCP..."
 sudo touch /var/lib/misc/udhcpd.leases 
