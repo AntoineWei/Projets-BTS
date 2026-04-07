@@ -1,87 +1,57 @@
+
 import socket
-import requests
+import threading
 import json
+import time
+import os
+# Configuration
+LOCAL_IP = '192.168.10.1' # IP de l'interface isolée du RPi
+LOCAL_PORT = 1234
+BUFFER_FILE = "data_buffer.json"
+COMMAND_FILE = "command_flag.txt"
 
-# Configuration de la connexion
-TCP_IP = '192.168.10.1' # Ecoute sur toutes les interfaces du Raspberry
-TCP_PORT = 8080         # Port à ouvrir
-WEB_SERVEUR_URL = ""    #URL Serveur WEB
-
-#Dictionnaire pour stocker les données
-donnee = {
-        "temperature": None,
-        "courant": None,
-        "tension": None
-}
-
-def envoi_au_serveurw(payload):
-        """Envoie les données recues au serveur"""
+def handle_sensor_data(client_socket):
         try:
-                print("Envoi groupé au serveur WEB : {}".format(payload))
-                response = requests.post(WEB_SERVEUR_URL, json=payload, timeout=5)
-                if reponse.status_code == 200:
-                        print("Succes : Donnees transmises.")
-                else:
-                        print("Erreur Serveur WEB : {}".format(response.status_code))
-        except Exception:
-                err = sys.exc_info()[1]
-                print("Erreur HTTP : {}".format(err))
+                data = client_socket.recv(1024).decode('utf-8')
+                if data:
+                        print("[LOCAL] Données reçues : {}".format(data))
+                        # Sauvegarde dans le fichier tampon (Append mode)
+                        f = open(BUFFER_FILE, "a")
+                        f.write(data + "\n")
+                        f.close()
 
-def start_serveur():
-        # Création du socket TCP
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        #permet de relancer le script sans attendre que le port se libère
-        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                        #Vérification si une commande attend d'être envoyée
+                        if os.path.exists(COMMAND_FILE):
+                                f_cmd = open(COMMAND_FILE, "r")
+                                cmd = f_cmd.read().strip()
+                                f_cmd.close
 
-        try:
-                server_socket.bind((TCP_IP, TCP_PORT))
-                server_socket.listen(5)
-                print("Serveur TCP actif sur le port {}".format(TCP_PORT))
+                                client_socket.send(cmd.encode('utf-8'))
+                                print("[LOCAL] Commande envoyee")
+
+                                try:
+                                        os.remove(COMMAND_FILE)
+                                except:
+                                        pass
+                        else:
+                                client_socket.send("ACK".encode('utf-8'))
         except Exeption:
-                err = sys.exc_info()[1]
-                print("Impossible de demarrer le serveur : {}".format(err))
-                return
+                print("[ERREUR LOCAL] : {]".format(sys.exc_info()[1]))
+        finally:
+                client_socket.close()
+
+def start_local_serveur():
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.bind((LOCAL_IP, LOCAL_PORT))
+        server.listen()
+        print("[*] Serveur Local a l'ecoute sur {}:{}".format(LOCAL_IP, LOCAL_PORT))
 
         while True:
-                #Attend une connexion des capteurs
-                conn,addr = server_socket.accept()
-
-                try:
-                        print("Connecte par {}".format(addr))
-                        raw_data = conn.recv(1024)
-                        if raw_data:
-                                message = raw_data.decode('utf-8').strip()
-
-                        #Logique de tri
-                        mots = message.split()
-                        for mot in mots:
-                                if mot.startswith("T:"):
-                                        donnee["temperature"] = mot.replace("T:", "")
-                                elif mot.startswith("C:"):
-                                        donnee["courant"] = mot.replace("C:", "")
-                                elif mot.startswith("V:"):
-                                        donnee["tension"] = mot.replace("V:", "")
-
-
-                        # Verification des données
-                        if donnee["temperature"] and donnee["courant"] and donnee["tension"]:
-                                #Envoie des donnee
-                                envoi_au_serveurw(donnee)
-
-                                #Vide les donnee pour les prochaine
-                                donnee["temperature"] = None
-                                donnee["courant"] = None
-                                donnee["tension"] = None
-                                print("Donnee reinitialisé.")
-                        else:
-                                print("Données partielles recues. Etat actuel : {}".format(donnee))
-
-
-                except Exception:
-                        err = sys.exc_info()[1]
-                        print("Erreur lors de la reception : {}".format(err))
-                finally:
-                        conn.close()
+                client, addr = server.accept()
+                # Un thread par connexion pour ne pas bloquer le  serveur
+                client_handler = threading.Thread(target=handle_sensor_data, args=(client,))
+                client_handler.start()
 
 if __name__ == "__main__":
-        start_serveur()
+        start_local_serveur()
+
