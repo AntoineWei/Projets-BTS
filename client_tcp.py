@@ -3,9 +3,8 @@ import time
 import os
 
 # --- CONFIGURATION ---
-DEST_HOST = "10.129.188.115"  # IP du serveur de destination
 DEST_IP = "10.129.188.115"    # Connexion directe par IP
-DEST_PORT = 80                 # Port HTTP standard
+DEST_PORT = 80                 # À changer si ton serveur TCP écoute sur un autre port (ex: 8080)
 BUFFER_FILE = "data_buffer.json"
 COMMAND_FILE = "command_flag.txt"
 
@@ -14,7 +13,6 @@ def extract_value(text, prefix):
     if prefix in text:
         try:
             part = text.split(prefix)[1].lstrip()
-            # Remplace les sauts de ligne par des espaces pour isoler la donnee
             clean_part = part.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
             value = clean_part.split(' ')[0].strip()
             return value
@@ -23,7 +21,7 @@ def extract_value(text, prefix):
     return None
 
 def send_data_via_tcp():
-    """Lit le tampon, valide les donnees et forge la requete HTTP via Socket TCP"""
+    """Lit le tampon, valide les donnees et envoie uniquement le JSON brut en TCP"""
     if not os.path.exists(BUFFER_FILE) or os.path.getsize(BUFFER_FILE) == 0:
         return
 
@@ -39,62 +37,50 @@ def send_data_via_tcp():
 
     # On n'envoie que si le triplet est complet pour la BDD
     if val_t and val_c and val_v:
-        # Construction du corps du message au format JSON attendu par le PHP
+        # Construction du texte JSON brut (uniquement la donnee)
         json_data = '{"temperature":"' + val_t + '", "tension":"' + val_v + '", "courant":"' + val_c + '"}'
         
-        print("[TCP] Envoi de la trame vers " + DEST_IP)
+        print("[TCP] Envoi de la donnee brute : " + json_data)
         
         try:
-            # 1. Creation du Socket TCP (AF_INET = IPv4, SOCK_STREAM = TCP)
+            # 1. Creation du Socket TCP (IPv4, TCP)
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(10) # Timeout pour eviter de bloquer le script
+            sock.settimeout(10)
             
             # 2. Connexion TCP au serveur
             sock.connect((DEST_IP, DEST_PORT))
             
-            # 3. Forge manuelle de la requete HTTP POST
-            request = "POST /api/ajouterMesure.php HTTP/1.1\r\n"
-            request += "Host: " + DEST_HOST + "\r\n"
-            request += "Content-Type: application/json\r\n"
-            request += "Content-Length: " + str(len(json_data)) + "\r\n"
-            request += "Connection: close\r\n"
-            request += "\r\n" # La ligne vide obligatoire qui separe les en-tetes du corps
-            request += json_data
+            # 3. Envoi UNIQUE de la donnée (Pas de HTTP, pas de headers)
+            # On ajoute souvent un '\n' à la fin pour que le serveur sache que le message est fini
+            packet = json_data + "\n"
+            sock.sendall(packet.encode('utf-8'))
             
-            # 4. Envoi de la requete forgee
-            sock.sendall(request.encode('utf-8'))
+            # 4. Attente d'un accusé de réception brut (ex: "OK" ou "HEAT_ON")
+            response = sock.recv(1024).decode('utf-8').strip()
+            print("[TCP] Reponse brute du serveur : " + response)
             
-            # 5. Reception de la reponse du serveur PHP
-            response = sock.recv(4096).decode('utf-8')
-            print("[TCP] Reponse brute du serveur recue.")
-            
-            # 6. Analyse du code retour HTTP
-            if "200 OK" in response:
-                print("[TCP] Enregistrement reussi avec succes.")
-                
-                # Verification de l'ordre de retour
+            # Si le serveur renvoie quelque chose, on considère que c'est un succès
+            if response:
                 if "HEAT_ON" in response:
-                    print("[TCP] Ordre de chauffage detecte dans la reponse !")
+                    print("[TCP] Ordre de chauffage detecte !")
                     f_cmd = open(COMMAND_FILE, "w")
                     f_cmd.write("HEAT_ON")
                     f_cmd.close()
                 
-                # Succes de la chaine complète : on peut vider le tampon
+                # Succès : on vide le tampon local
                 f_clear = open(BUFFER_FILE, "w")
                 f_clear.close()
-            else:
-                print("[TCP] Erreur Serveur (Pas un code 200 OK)")
-                
-            # 7. Fermeture propre du socket
+            
+            # 5. Fermeture du socket
             sock.close()
             
         except Exception as e:
-            print("[ERREUR TCP] Connexion impossible au serveur : " + str(e))
+            print("[ERREUR TCP] Impossible de joindre le serveur : " + str(e))
     else:
-        print("[TCP] Donnees incompletes dans le tampon. Attente de T, C et V.")
+        print("[TCP] Donnees incompletes dans le tampon.")
 
 # --- BOUCLE PRINCIPALE ---
-print("[*] Lancement du Client TCP vers " + DEST_HOST)
+print("[*] Client TCP de donnees brutes demarre vers " + DEST_IP)
 while True:
     send_data_via_tcp()
-    time.sleep(10) # Verifie le fichier toutes les 10 secondes (ajustable)
+    time.sleep(10)
