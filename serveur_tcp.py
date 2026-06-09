@@ -54,16 +54,14 @@ def handle_sensor_data(client_socket):
                         client_socket.send("ON".encode('utf-8'))
                         print("[LOCAL] Commande ON envoyee. Debut de la temporisation de {}s...".format(delai))
                         
-                        # 2. Attente de X secondes
-                        time.sleep(delai)
-                        
-                        # 3. Envoi de la commande OFF
-                        client_socket.send("OFF".encode('utf-8'))
-                        print("[LOCAL] Temporisation ecoulee : Commande OFF envoyee.")
+                        # 2. Création et lancement du Timer en arrière-plan (non-bloquant)
+                        timer = threading.Timer(delai, send_off_command, args=[client_socket])
+                        timer.start()
                         
                         # Suppression du fichier de commande après exécution complète
                         try:
-                            os.remove(COMMAND_FILE)
+                            f_clear = open(COMMAND_FILE, "w")
+                            f_clear.close()
                         except:
                             pass
                     else:
