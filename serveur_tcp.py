@@ -11,6 +11,14 @@ LOCAL_PORT = 1234
 BUFFER_FILE = "data_buffer.json"
 COMMAND_FILE = "command_flag.txt"
 
+def send_off_command(client_socket):
+    """Fonction exécutée en arrière-plan après le délai pour envoyer le OFF."""
+    try:
+        client_socket.send("OFF".encode('utf-8'))
+        print("[LOCAL] Temporisation ecoulee : Commande OFF envoyee en arrière-plan.")
+    except Exception:
+        print("[ERREUR AP] Impossible d'envoyer le OFF : {}".format(sys.exc_info()[1]))
+
 def handle_sensor_data(client_socket):
     try:
         while True:
