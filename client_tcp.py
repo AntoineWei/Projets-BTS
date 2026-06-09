@@ -61,10 +61,10 @@ def send_data_via_tcp():
             
             # Si le serveur renvoie quelque chose, on considère que c'est un succès
             if response:
-                if "HEAT_ON" in response:
+                if "ON" in response:
                     print("[TCP] Ordre de chauffage detecte !")
                     f_cmd = open(COMMAND_FILE, "w")
-                    f_cmd.write("HEAT_ON")
+                    f_cmd.write("ON")
                     f_cmd.close()
                 
                 # Succès : on vide le tampon local
