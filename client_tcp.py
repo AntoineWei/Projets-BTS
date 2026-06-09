@@ -8,6 +8,37 @@ DEST_PORT = 22                 # À changer si ton serveur TCP écoute sur un au
 BUFFER_FILE = "data_buffer.json"
 COMMAND_FILE = "command_flag.txt"
 
+# URL du serveur distant où se trouve le fichier .txt à récupérer
+URL_FICHIER_DISTANT = "http://ton-serveur-distant.com/chemin/vers/ton/fichier.txt"
+
+# --- FONCTIONS ---
+
+def download_remote_file():
+	"""Effectue une requête HTTP GET pour récupérer un fichier distant et le sauvegarder localement"""
+	try:
+		print("[HTTP] Connexion au serveur distant pour le fichier...")
+		reponse = requests.get(URL_FICHIER_DISTANT, timeout=10)
+
+		# On vérifie si la requête a réussi (code statut 200)
+		if reponse.status_code == 200:
+			print("[HTTP] Fichier récupéré avec succès !")
+			
+			# Sauvegarde du contenu dans un fichier local
+			nom_fichier_local = "fichier_copie.txt"
+			with open(nom_fichier_local, "w", encoding="utf-8") as fichier:
+				fichier.write(reponse.text)
+			print(f"[HTTP] Fichier sauvegardé localement sous : {nom_fichier_local}")
+			
+		else:
+			print(f"[ERREUR HTTP] Impossible de récupérer le fichier. Code statut : {reponse.status_code}")
+
+	except requests.exceptions.Timeout:
+		print("[ERREUR HTTP] Le serveur distant a mis trop de temps à répondre (Timeout).")
+	except requests.exceptions.ConnectionError:
+		print("[ERREUR HTTP] Impossible de se connecter au serveur distant. Vérifie le réseau ou l'URL.")
+	except Exception:
+		print("[ERREUR HTTP] Une erreur imprévue est survenue.")
+
 def extract_value(text, prefix):
     """Extrait une valeur numerique nettoyee apres un prefixe (T:, C: ou V:)"""
     if prefix in text:
@@ -61,12 +92,8 @@ def send_data_via_tcp():
             
             # Si le serveur renvoie quelque chose, on considère que c'est un succès
             if response:
-                if "ON" in response:
-                    print("[TCP] Ordre de chauffage detecte !")
-                    f_cmd = open(COMMAND_FILE, "w")
-                    f_cmd.write("ON")
-                    f_cmd.close()
-                
+                # Récupération du fichier distant en HTTP
+	            download_remote_file()
                 # Succès : on vide le tampon local
                 f_clear = open(BUFFER_FILE, "w")
                 f_clear.close()
