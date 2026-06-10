@@ -4,7 +4,7 @@ import os
 
 # --- CONFIGURATION ---
 DEST_IP = "10.129.188.115"    # Connexion directe par IP
-DEST_PORT = 80                 # À changer si le serveur TCP écoute sur un autre port (ex: 8080)
+DEST_PORT = 22                 # À changer si le serveur TCP écoute sur un autre port (ex: 8080)
 BUFFER_FILE = "data_buffer.json"
 COMMAND_FILE = "command_flag.txt"
 
