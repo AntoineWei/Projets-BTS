@@ -44,9 +44,9 @@ def handle_sensor_data(client_socket):
                     cmd_content = f_cmd.read().strip()
                     f_cmd.close()
 
-                    # On s'assure qu'on a bien le format "OFF:X"
-                    if "OFF:" in cmd_content:
-                        # On sépare "OFF" et la valeur de la tempo (X)
+                    # On s'assure qu'on a bien le format "ON:X"
+                    if "ON:" in cmd_content:
+                        # On sépare "ON" et la valeur de la tempo (X)
                         parts = cmd_content.split(":")
                         delai = float(parts[1])
                         
